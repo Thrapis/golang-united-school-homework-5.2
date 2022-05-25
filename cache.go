@@ -6,8 +6,7 @@ import (
 
 type containment struct {
 	value string
-	temporary bool
-	before time.Time
+	before *time.Time
 }
 
 type Cache struct {
@@ -20,7 +19,7 @@ func NewCache() Cache {
 
 func (c Cache) cleanup() {
 	for key, val := range c.container {
-		if val.temporary && !time.Now().Before(val.before) {
+		if val.before != nil && !time.Now().Before(*val.before) {
 			delete(c.container, key)
 		}
 	}
@@ -30,7 +29,7 @@ func (c Cache) Get(key string) (string, bool) {
 	c.cleanup()
 	if val, ok := c.container[key]; ok {
 		// I know that after cleanup I shouldn't check containment expiration, but still
-		if !val.temporary || time.Now().Before(val.before) {
+		if val.before == nil || time.Now().Before(*val.before) {
 			return val.value, true
 		}
 	}
@@ -39,7 +38,7 @@ func (c Cache) Get(key string) (string, bool) {
 
 func (c Cache) Put(key, value string) {
 	c.cleanup()
-	c.container[key] = containment{value, false, time.Time{}}
+	c.container[key] = containment{value, nil}
 }
 
 func (c Cache) Keys() []string {
@@ -55,5 +54,5 @@ func (c Cache) Keys() []string {
 
 func (c Cache) PutTill(key, value string, deadline time.Time) {
 	c.cleanup()
-	c.container[key] = containment{value, true, deadline}
+	c.container[key] = containment{value, &deadline}
 }
